@@ -635,6 +635,10 @@ class PassManager(ffi.ObjectRef):
         """http://llvm.org/docs/Passes.html#loop-rotate-rotate-loops."""
         ffi.lib.LLVMPY_LLVMAddLoopRotatePass(self)
 
+    def add_instruction_namer_pass(self):
+        """https://llvm.org/docs/Passes.html#instnamer-assign-names-to-anonymous-instructions."""
+        ffi.lib.LLVMPY_AddInstructionNamerPass(self)
+
     # Non-standard LLVM passes
 
     def add_refprune_pass(self, subpasses_flags=RefPruneSubpasses.ALL,
@@ -906,6 +910,7 @@ ffi.lib.LLVMPY_AddDeadCodeEliminationPass.argtypes = [ffi.LLVMPassManagerRef]
 ffi.lib.LLVMPY_AddCFGSimplificationPass.argtypes = [ffi.LLVMPassManagerRef]
 ffi.lib.LLVMPY_AddGVNPass.argtypes = [ffi.LLVMPassManagerRef]
 ffi.lib.LLVMPY_AddInstructionCombiningPass.argtypes = [ffi.LLVMPassManagerRef]
+ffi.lib.LLVMPY_AddInstructionNamerPass.argtypes = [ffi.LLVMPassManagerRef]
 ffi.lib.LLVMPY_AddLICMPass.argtypes = [ffi.LLVMPassManagerRef]
 ffi.lib.LLVMPY_AddSCCPPass.argtypes = [ffi.LLVMPassManagerRef]
 ffi.lib.LLVMPY_AddSROAPass.argtypes = [ffi.LLVMPassManagerRef]

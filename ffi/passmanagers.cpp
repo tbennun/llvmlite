@@ -466,4 +466,9 @@ LLVMPY_LLVMAddLoopRotatePass(LLVMPassManagerRef PM) {
     LLVMAddLoopRotatePass(PM);
 }
 
+API_EXPORT(void)
+LLVMPY_AddInstructionNamerPass(LLVMPassManagerRef PM) {
+    unwrap(PM)->add(createInstructionNamerPass());
+}
+
 } // end extern "C"
