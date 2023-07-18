@@ -41,7 +41,7 @@ class TypeRef(ffi.ObjectRef):
     @property
     def is_struct(self):
         """
-        Returns true is the type is a struct type.
+        Returns true if the type is a struct type.
         """
         return ffi.lib.LLVMPY_TypeIsStruct(self)
 
