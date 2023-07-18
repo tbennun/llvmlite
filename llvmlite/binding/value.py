@@ -6,7 +6,7 @@ import warnings
 from llvmlite.binding import ffi
 from llvmlite.binding.common import _decode_string, _encode_string
 from llvmlite.binding.typeref import TypeRef
-
+from llvmlite.binding.attribute import AttributeRef
 
 class Linkage(enum.IntEnum):
     # The LLVMLinkage enum from llvm-c/Core.h
@@ -144,6 +144,17 @@ class ValueRef(ffi.ObjectRef):
         return self._kind == 'instruction'
 
     @property
+    def is_memory_instruction(self):
+        if self._kind != 'instruction':
+            return False
+
+        memoryInstructions = ['alloca', 'store', 'load', 'getelementptr']
+        if self.opcode in memoryInstructions:
+            return True
+
+        return False
+
+    @property
     def is_operand(self):
         return self._kind == 'operand'
 
@@ -219,6 +230,16 @@ class ValueRef(ffi.ObjectRef):
         return TypeRef(ffi.lib.LLVMPY_TypeOf(self))
 
     @property
+    def memory_type(self):
+        """
+        The memory type accessed by this instruction LLVM type.
+        """
+        if not self.is_memory_instruction:
+            raise ValueError('Argument is not  amemory instruciton {!r}'.format(str(self)))
+
+        return TypeRef(ffi.lib.LLVMPY_TypeOfMemory(self))
+
+    @property
     def is_declaration(self):
         """
         Whether this value (presumably global) is defined in the current
@@ -235,24 +256,7 @@ class ValueRef(ffi.ObjectRef):
         Return an iterator over this value's attributes.
         The iterator will yield a string for each attribute.
         """
-        itr = iter(())
-        if self.is_function:
-            it = ffi.lib.LLVMPY_FunctionAttributesIter(self)
-            itr = _AttributeListIterator(it)
-        elif self.is_instruction:
-            if self.opcode == 'call':
-                it = ffi.lib.LLVMPY_CallInstAttributesIter(self)
-                itr = _AttributeListIterator(it)
-            elif self.opcode == 'invoke':
-                it = ffi.lib.LLVMPY_InvokeInstAttributesIter(self)
-                itr = _AttributeListIterator(it)
-        elif self.is_global:
-            it = ffi.lib.LLVMPY_GlobalAttributesIter(self)
-            itr = _AttributeSetIterator(it)
-        elif self.is_argument:
-            it = ffi.lib.LLVMPY_ArgumentAttributesIter(self)
-            itr = _AttributeSetIterator(it)
-        return itr
+        return AttributeRef.attribute_iterator(self)
 
     @property
     def blocks(self):
@@ -392,40 +396,6 @@ class _ValueIterator(ffi.ObjectRef):
     def __iter__(self):
         return self
 
-
-class _AttributeIterator(ffi.ObjectRef):
-
-    def __next__(self):
-        vp = self._next()
-        if vp:
-            return vp
-        else:
-            raise StopIteration
-
-    next = __next__
-
-    def __iter__(self):
-        return self
-
-
-class _AttributeListIterator(_AttributeIterator):
-
-    def _dispose(self):
-        self._capi.LLVMPY_DisposeAttributeListIter(self)
-
-    def _next(self):
-        return ffi.ret_bytes(ffi.lib.LLVMPY_AttributeListIterNext(self))
-
-
-class _AttributeSetIterator(_AttributeIterator):
-
-    def _dispose(self):
-        self._capi.LLVMPY_DisposeAttributeSetIter(self)
-
-    def _next(self):
-        return ffi.ret_bytes(ffi.lib.LLVMPY_AttributeSetIterNext(self))
-
-
 class _BlocksIterator(_ValueIterator):
 
     kind = 'block'
@@ -499,6 +469,9 @@ ffi.lib.LLVMPY_SetValueName.argtypes = [ffi.LLVMValueRef, c_char_p]
 ffi.lib.LLVMPY_TypeOf.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_TypeOf.restype = ffi.LLVMTypeRef
 
+ffi.lib.LLVMPY_TypeOfMemory.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_TypeOfMemory.restype = ffi.LLVMTypeRef
+
 ffi.lib.LLVMPY_GetTypeName.argtypes = [ffi.LLVMTypeRef]
 ffi.lib.LLVMPY_GetTypeName.restype = c_void_p
 
@@ -517,28 +490,10 @@ ffi.lib.LLVMPY_GetDLLStorageClass.restype = c_int
 
 ffi.lib.LLVMPY_SetDLLStorageClass.argtypes = [ffi.LLVMValueRef, c_int]
 
-ffi.lib.LLVMPY_GetEnumAttributeKindForName.argtypes = [c_char_p, c_size_t]
-ffi.lib.LLVMPY_GetEnumAttributeKindForName.restype = c_uint
-
 ffi.lib.LLVMPY_AddFunctionAttr.argtypes = [ffi.LLVMValueRef, c_uint]
 
 ffi.lib.LLVMPY_IsDeclaration.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_IsDeclaration.restype = c_int
-
-ffi.lib.LLVMPY_FunctionAttributesIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_FunctionAttributesIter.restype = ffi.LLVMAttributeListIterator
-
-ffi.lib.LLVMPY_CallInstAttributesIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_CallInstAttributesIter.restype = ffi.LLVMAttributeListIterator
-
-ffi.lib.LLVMPY_InvokeInstAttributesIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_InvokeInstAttributesIter.restype = ffi.LLVMAttributeListIterator
-
-ffi.lib.LLVMPY_GlobalAttributesIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_GlobalAttributesIter.restype = ffi.LLVMAttributeSetIterator
-
-ffi.lib.LLVMPY_ArgumentAttributesIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_ArgumentAttributesIter.restype = ffi.LLVMAttributeSetIterator
 
 ffi.lib.LLVMPY_FunctionBlocksIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_FunctionBlocksIter.restype = ffi.LLVMBlocksIterator
@@ -555,11 +510,6 @@ ffi.lib.LLVMPY_InstructionOperandsIter.restype = ffi.LLVMOperandsIterator
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.restype = ffi.LLVMIncomingBlocksIterator
 
-ffi.lib.LLVMPY_DisposeAttributeListIter.argtypes = [
-    ffi.LLVMAttributeListIterator]
-
-ffi.lib.LLVMPY_DisposeAttributeSetIter.argtypes = [ffi.LLVMAttributeSetIterator]
-
 ffi.lib.LLVMPY_DisposeBlocksIter.argtypes = [ffi.LLVMBlocksIterator]
 
 ffi.lib.LLVMPY_DisposeInstructionsIter.argtypes = [ffi.LLVMInstructionsIterator]
@@ -568,12 +518,6 @@ ffi.lib.LLVMPY_DisposeOperandsIter.argtypes = [ffi.LLVMOperandsIterator]
 
 ffi.lib.LLVMPY_DisposeIncomingBlocksIter.argtypes = [
     ffi.LLVMIncomingBlocksIterator]
-
-ffi.lib.LLVMPY_AttributeListIterNext.argtypes = [ffi.LLVMAttributeListIterator]
-ffi.lib.LLVMPY_AttributeListIterNext.restype = c_void_p
-
-ffi.lib.LLVMPY_AttributeSetIterNext.argtypes = [ffi.LLVMAttributeSetIterator]
-ffi.lib.LLVMPY_AttributeSetIterNext.restype = c_void_p
 
 ffi.lib.LLVMPY_BlocksIterNext.argtypes = [ffi.LLVMBlocksIterator]
 ffi.lib.LLVMPY_BlocksIterNext.restype = ffi.LLVMValueRef
