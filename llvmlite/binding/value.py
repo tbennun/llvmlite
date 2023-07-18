@@ -8,6 +8,7 @@ from llvmlite.binding.common import _decode_string, _encode_string
 from llvmlite.binding.typeref import TypeRef
 from llvmlite.binding.attribute import AttributeRef
 
+
 class Linkage(enum.IntEnum):
     # The LLVMLinkage enum from llvm-c/Core.h
 
@@ -148,8 +149,8 @@ class ValueRef(ffi.ObjectRef):
         if self._kind != 'instruction':
             return False
 
-        memoryInstructions = ['alloca', 'store', 'load', 'getelementptr']
-        if self.opcode in memoryInstructions:
+        memory_instructions = ('alloca', 'store', 'load', 'getelementptr')
+        if self.opcode in memory_instructions:
             return True
 
         return False
@@ -232,10 +233,10 @@ class ValueRef(ffi.ObjectRef):
     @property
     def memory_type(self):
         """
-        The memory type accessed by this instruction LLVM type.
+        The memory type accessed by this instruction's LLVM type.
         """
         if not self.is_memory_instruction:
-            raise ValueError('Argument is not  amemory instruciton {!r}'.format(str(self)))
+            raise ValueError('Argument is not a memory instruction {!r}'.format(str(self)))
 
         return TypeRef(ffi.lib.LLVMPY_TypeOfMemory(self))
 
