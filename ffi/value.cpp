@@ -60,7 +60,8 @@ struct OperandsIterator {
 struct OpaqueOperandsIterator;
 typedef OpaqueOperandsIterator *LLVMOperandsIteratorRef;
 
-/* An iterator around a phi node's incoming blocks, including the stop condition */
+/* An iterator around a phi node's incoming blocks, including the stop condition
+ */
 struct IncomingBlocksIterator {
     typedef llvm::PHINode::const_block_iterator const_iterator;
     const_iterator cur;
@@ -147,11 +148,19 @@ LLVMPY_InstructionOperandsIter(LLVMValueRef I) {
     return wrap(new OperandsIterator(inst->op_begin(), inst->op_end()));
 }
 
+API_EXPORT(LLVMOperandsIteratorRef)
+LLVMPY_ConstantAggregateOperandsIter(LLVMValueRef I) {
+    using namespace llvm;
+    ConstantAggregate *inst = unwrap<ConstantAggregate>(I);
+    return wrap(new OperandsIterator(inst->op_begin(), inst->op_end()));
+}
+
 API_EXPORT(LLVMIncomingBlocksIteratorRef)
 LLVMPY_PhiIncomingBlocksIter(LLVMValueRef I) {
     using namespace llvm;
     PHINode *inst = unwrap<PHINode>(I);
-    return wrap(new IncomingBlocksIterator(inst->block_begin(), inst->block_end()));
+    return wrap(
+        new IncomingBlocksIterator(inst->block_begin(), inst->block_end()));
 }
 
 API_EXPORT(LLVMValueRef)
@@ -266,6 +275,55 @@ LLVMPY_GetConstantFPValue(LLVMValueRef Val, bool *losesInfo) {
     return result;
 }
 
+API_EXPORT(const char *)
+LLVMPY_GetConstantDataAsString(LLVMValueRef Val) {
+    if (llvm::ConstantDataSequential *CI =
+            llvm::dyn_cast<llvm::ConstantDataSequential>((llvm::Value *)Val)) {
+        if (!CI->isString())
+            return nullptr;
+        auto str = CI->getAsString();
+        return LLVMPY_CreateByteString((const char *)str.bytes_begin(),
+                                       str.bytes_end() - str.bytes_begin());
+    }
+    return nullptr;
+}
+
+API_EXPORT(LLVMValueRef)
+LLVMPY_GetConstantSequenceElement(LLVMValueRef Val, unsigned i) {
+    if (llvm::ConstantDataSequential *CI =
+            llvm::dyn_cast<llvm::ConstantDataSequential>((llvm::Value *)Val)) {
+        return LLVMValueRef(CI->getElementAsConstant(i));
+    }
+    return nullptr;
+}
+
+API_EXPORT(size_t)
+LLVMPY_GetConstantSequenceNumElements(LLVMValueRef Val) {
+    if (llvm::ConstantDataSequential *CI =
+            llvm::dyn_cast<llvm::ConstantDataSequential>((llvm::Value *)Val)) {
+        return CI->getNumElements();
+    }
+    return 0;
+}
+
+API_EXPORT(LLVMValueRef)
+LLVMPY_GetInitializer(LLVMValueRef Val) {
+    if (llvm::GlobalVariable *CI =
+            llvm::dyn_cast<llvm::GlobalVariable>((llvm::Value *)Val)) {
+        return LLVMValueRef(CI->getInitializer());
+    }
+    return nullptr;
+}
+
+API_EXPORT(LLVMValueRef)
+LLVMPY_ConstantExprAsInstruction(LLVMValueRef Val) {
+    if (llvm::ConstantExpr *CI =
+            llvm::dyn_cast<llvm::ConstantExpr>((llvm::Value *)Val)) {
+        return LLVMValueRef(CI->getAsInstruction());
+    }
+    return nullptr;
+}
+
 API_EXPORT(int)
 LLVMPY_GetValueKind(LLVMValueRef Val) { return (int)LLVMGetValueKind(Val); }
 
@@ -339,21 +397,18 @@ LLVMPY_GetOpcodeName(LLVMValueRef Val) {
 
 API_EXPORT(LLVMTypeRef)
 LLVMPY_TypeOfMemory(LLVMValueRef Val) {
-  llvm::Value *unwrapped = llvm::unwrap(Val);
-  llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(unwrapped);
-  if (auto *SI = llvm::dyn_cast<llvm::StoreInst>(inst)){
-    return LLVMTypeRef(SI->getValueOperand()->getType());
-  }
-  else if ( auto *LI = llvm::dyn_cast<llvm::LoadInst>(inst)){
-    return LLVMTypeRef(LI->getType());
-  }
-  else if ( auto *GEP = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)){
-    return LLVMTypeRef(GEP->getSourceElementType());
-  }
-  else if ( auto AC = llvm::dyn_cast<llvm::AllocaInst>(inst)){
-    return LLVMTypeRef(AC->getAllocatedType());
-  }
-  return NULL;
+    llvm::Value *unwrapped = llvm::unwrap(Val);
+    llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(unwrapped);
+    if (auto *SI = llvm::dyn_cast<llvm::StoreInst>(inst)) {
+        return LLVMTypeRef(SI->getValueOperand()->getType());
+    } else if (auto *LI = llvm::dyn_cast<llvm::LoadInst>(inst)) {
+        return LLVMTypeRef(LI->getType());
+    } else if (auto *GEP = llvm::dyn_cast<llvm::GetElementPtrInst>(inst)) {
+        return LLVMTypeRef(GEP->getSourceElementType());
+    } else if (auto AC = llvm::dyn_cast<llvm::AllocaInst>(inst)) {
+        return LLVMTypeRef(AC->getAllocatedType());
+    }
+    return NULL;
 }
 
 } // end extern "C"

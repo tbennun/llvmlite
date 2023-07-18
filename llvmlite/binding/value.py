@@ -214,7 +214,8 @@ class ValueRef(ffi.ObjectRef):
             attribute name
         """
         if not self.is_function:
-            raise ValueError('expected function value, got %s' % (self._kind,))
+            raise ValueError('expected function value, got %s' %
+                             (self._kind, ))
         attrname = str(attr)
         attrval = ffi.lib.LLVMPY_GetEnumAttributeKindForName(
             _encode_string(attrname), len(attrname))
@@ -236,9 +237,20 @@ class ValueRef(ffi.ObjectRef):
         The memory type accessed by this instruction's LLVM type.
         """
         if not self.is_memory_instruction:
-            raise ValueError('Argument is not a memory instruction {!r}'.format(str(self)))
+            raise ValueError(
+                'Argument is not a memory instruction {!r}'.format(str(self)))
 
         return TypeRef(ffi.lib.LLVMPY_TypeOfMemory(self))
+
+    @property
+    def initializer(self):
+        """
+        Returns the initializer of a global variable.
+        """
+        if self.value_kind != ValueKind.global_variable:
+            raise ValueError('expected global value, got %s' % (self._kind))
+        return ValueRef(ffi.lib.LLVMPY_GetInitializer(self), self._kind,
+                        self._parents)
 
     @property
     def is_declaration(self):
@@ -247,8 +259,8 @@ class ValueRef(ffi.ObjectRef):
         module.
         """
         if not (self.is_global or self.is_function):
-            raise ValueError('expected global or function value, got %s'
-                             % (self._kind,))
+            raise ValueError('expected global or function value, got %s' %
+                             (self._kind, ))
         return ffi.lib.LLVMPY_IsDeclaration(self)
 
     @property
@@ -266,7 +278,8 @@ class ValueRef(ffi.ObjectRef):
         The iterator will yield a ValueRef for each block.
         """
         if not self.is_function:
-            raise ValueError('expected function value, got %s' % (self._kind,))
+            raise ValueError('expected function value, got %s' %
+                             (self._kind, ))
         it = ffi.lib.LLVMPY_FunctionBlocksIter(self)
         parents = self._parents.copy()
         parents.update(function=self)
@@ -279,7 +292,8 @@ class ValueRef(ffi.ObjectRef):
         The iterator will yield a ValueRef for each argument.
         """
         if not self.is_function:
-            raise ValueError('expected function value, got %s' % (self._kind,))
+            raise ValueError('expected function value, got %s' %
+                             (self._kind, ))
         it = ffi.lib.LLVMPY_FunctionArgumentsIter(self)
         parents = self._parents.copy()
         parents.update(function=self)
@@ -292,7 +306,7 @@ class ValueRef(ffi.ObjectRef):
         The iterator will yield a ValueRef for each instruction.
         """
         if not self.is_block:
-            raise ValueError('expected block value, got %s' % (self._kind,))
+            raise ValueError('expected block value, got %s' % (self._kind, ))
         it = ffi.lib.LLVMPY_BlockInstructionsIter(self)
         parents = self._parents.copy()
         parents.update(block=self)
@@ -304,10 +318,17 @@ class ValueRef(ffi.ObjectRef):
         Return an iterator over this instruction's operands.
         The iterator will yield a ValueRef for each operand.
         """
-        if not self.is_instruction:
-            raise ValueError('expected instruction value, got %s'
-                             % (self._kind,))
-        it = ffi.lib.LLVMPY_InstructionOperandsIter(self)
+        if (not self.is_instruction and self.value_kind
+                not in (ValueKind.constant_array, ValueKind.constant_vector,
+                        ValueKind.constant_struct)):
+            raise ValueError(
+                'expected instruction value or constant aggregate,'
+                ' got %s' % (self._kind, ))
+        if self.is_instruction:
+            it = ffi.lib.LLVMPY_InstructionOperandsIter(self)
+        else:
+            it = ffi.lib.LLVMPY_ConstantAggregateOperandsIter(self)
+
         parents = self._parents.copy()
         parents.update(instruction=self)
         return _OperandsIterator(it, parents)
@@ -315,15 +336,15 @@ class ValueRef(ffi.ObjectRef):
     @property
     def opcode(self):
         if not self.is_instruction:
-            raise ValueError('expected instruction value, got %s'
-                             % (self._kind,))
+            raise ValueError('expected instruction value, got %s' %
+                             (self._kind, ))
         return ffi.ret_string(ffi.lib.LLVMPY_GetOpcodeName(self))
 
     @property
     def incoming_blocks(self):
         if not self.is_instruction or self.opcode != 'phi':
-            raise ValueError('expected phi instruction value, got %s'
-                             % (self._kind,))
+            raise ValueError('expected phi instruction value, got %s' %
+                             (self._kind, ))
         it = ffi.lib.LLVMPY_PhiIncomingBlocksIter(self)
         parents = self._parents.copy()
         parents.update(instruction=self)
@@ -340,8 +361,8 @@ class ValueRef(ffi.ObjectRef):
             if True and the constant is an integer, returns a signed version
         """
         if not self.is_constant:
-            raise ValueError('expected constant value, got %s'
-                             % (self._kind,))
+            raise ValueError('expected constant value, got %s' %
+                             (self._kind, ))
 
         if self.value_kind == ValueKind.constant_int:
             # Python integers are also arbitrary-precision
@@ -363,18 +384,53 @@ class ValueRef(ffi.ObjectRef):
             if accuracy_loss.value:
                 warnings.warn(
                     'Accuracy loss encountered in conversion of constant '
-                    f'value {str(self)}', BytesWarning
-                )
+                    f'value {str(self)}', BytesWarning)
 
             return value
+        elif self.value_kind == ValueKind.constant_expr:
+            # Convert constant expressions to their corresponding operands
+            inst = self.as_instruction()
+            return [op.get_constant_value(signed) for op in inst.operands]
+        elif self.value_kind == ValueKind.global_variable:
+            # Obtain constant value from global initializer
+            return self.initializer.get_constant_value(signed)
+        elif (self.value_kind
+              in (ValueKind.constant_array, ValueKind.constant_vector,
+                  ValueKind.constant_struct)):
+            # Convert constant aggregates to lists
+            return [op.get_constant_value(signed) for op in self.operands]
+        elif (self.value_kind in (ValueKind.constant_data_array,
+                                  ValueKind.constant_data_vector)):
+            # Try to get the value as a constant data (sequential)
+            value = ffi.lib.LLVMPY_GetConstantDataAsString(self)
+            if value:
+                return ffi.ret_string(value)
+            # Try to get sequence elements via a slower but safer route
+            num_elements = ffi.lib.LLVMPY_GetConstantSequenceNumElements(self)
+            return [
+                ValueRef(ffi.lib.LLVMPY_GetConstantSequenceElement(self, i),
+                         self._kind, self._parents).get_constant_value()
+                for i in range(num_elements)
+            ]
 
         # Otherwise, return the IR string
         return str(self)
+
+    def as_instruction(self):
+        """
+        Returns a constant expression value as an instruction.
+        """
+        if self.value_kind != ValueKind.constant_expr:
+            raise ValueError('expected constant expr, got %s' %
+                             (self.value_kind))
+        return ValueRef(ffi.lib.LLVMPY_ConstantExprAsInstruction(self),
+                        'instruction', self._parents)
 
 
 class _ValueIterator(ffi.ObjectRef):
 
     kind = None  # derived classes must specify the Value kind value
+
     # as class attribute
 
     def __init__(self, ptr, parents):
@@ -382,8 +438,8 @@ class _ValueIterator(ffi.ObjectRef):
         # Keep parent objects (module, function, etc) alive
         self._parents = parents
         if self.kind is None:
-            raise NotImplementedError('%s must specify kind attribute'
-                                      % (type(self).__name__,))
+            raise NotImplementedError('%s must specify kind attribute' %
+                                      (type(self).__name__, ))
 
     def __next__(self):
         vp = self._next()
@@ -396,6 +452,7 @@ class _ValueIterator(ffi.ObjectRef):
 
     def __iter__(self):
         return self
+
 
 class _BlocksIterator(_ValueIterator):
 
@@ -455,8 +512,7 @@ class _IncomingBlocksIterator(_ValueIterator):
 # FFI
 
 ffi.lib.LLVMPY_PrintValueToString.argtypes = [
-    ffi.LLVMValueRef,
-    POINTER(c_char_p)
+    ffi.LLVMValueRef, POINTER(c_char_p)
 ]
 
 ffi.lib.LLVMPY_GetGlobalParent.argtypes = [ffi.LLVMValueRef]
@@ -508,17 +564,23 @@ ffi.lib.LLVMPY_BlockInstructionsIter.restype = ffi.LLVMInstructionsIterator
 ffi.lib.LLVMPY_InstructionOperandsIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_InstructionOperandsIter.restype = ffi.LLVMOperandsIterator
 
+ffi.lib.LLVMPY_ConstantAggregateOperandsIter.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_ConstantAggregateOperandsIter.restype = ffi.LLVMOperandsIterator
+
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.restype = ffi.LLVMIncomingBlocksIterator
 
 ffi.lib.LLVMPY_DisposeBlocksIter.argtypes = [ffi.LLVMBlocksIterator]
 
-ffi.lib.LLVMPY_DisposeInstructionsIter.argtypes = [ffi.LLVMInstructionsIterator]
+ffi.lib.LLVMPY_DisposeInstructionsIter.argtypes = [
+    ffi.LLVMInstructionsIterator
+]
 
 ffi.lib.LLVMPY_DisposeOperandsIter.argtypes = [ffi.LLVMOperandsIterator]
 
 ffi.lib.LLVMPY_DisposeIncomingBlocksIter.argtypes = [
-    ffi.LLVMIncomingBlocksIterator]
+    ffi.LLVMIncomingBlocksIterator
+]
 
 ffi.lib.LLVMPY_BlocksIterNext.argtypes = [ffi.LLVMBlocksIterator]
 ffi.lib.LLVMPY_BlocksIterNext.restype = ffi.LLVMValueRef
@@ -532,7 +594,9 @@ ffi.lib.LLVMPY_InstructionsIterNext.restype = ffi.LLVMValueRef
 ffi.lib.LLVMPY_OperandsIterNext.argtypes = [ffi.LLVMOperandsIterator]
 ffi.lib.LLVMPY_OperandsIterNext.restype = ffi.LLVMValueRef
 
-ffi.lib.LLVMPY_IncomingBlocksIterNext.argtypes = [ffi.LLVMIncomingBlocksIterator]
+ffi.lib.LLVMPY_IncomingBlocksIterNext.argtypes = [
+    ffi.LLVMIncomingBlocksIterator
+]
 ffi.lib.LLVMPY_IncomingBlocksIterNext.restype = ffi.LLVMValueRef
 
 ffi.lib.LLVMPY_GetOpcodeName.argtypes = [ffi.LLVMValueRef]
@@ -544,13 +608,30 @@ ffi.lib.LLVMPY_IsConstant.restype = c_bool
 ffi.lib.LLVMPY_GetValueKind.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_GetValueKind.restype = c_int
 
-ffi.lib.LLVMPY_GetConstantIntRawValue.argtypes = [ffi.LLVMValueRef,
-                                                  POINTER(c_bool)]
+ffi.lib.LLVMPY_GetConstantIntRawValue.argtypes = [
+    ffi.LLVMValueRef, POINTER(c_bool)
+]
 ffi.lib.LLVMPY_GetConstantIntRawValue.restype = POINTER(c_uint64)
 
 ffi.lib.LLVMPY_GetConstantIntNumWords.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_GetConstantIntNumWords.restype = c_uint
 
-ffi.lib.LLVMPY_GetConstantFPValue.argtypes = [ffi.LLVMValueRef,
-                                              POINTER(c_bool)]
+ffi.lib.LLVMPY_GetConstantFPValue.argtypes = [
+    ffi.LLVMValueRef, POINTER(c_bool)
+]
 ffi.lib.LLVMPY_GetConstantFPValue.restype = c_double
+
+ffi.lib.LLVMPY_ConstantExprAsInstruction.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_ConstantExprAsInstruction.restype = ffi.LLVMValueRef
+
+ffi.lib.LLVMPY_GetInitializer.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_GetInitializer.restype = ffi.LLVMValueRef
+
+ffi.lib.LLVMPY_GetConstantDataAsString.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_GetConstantDataAsString.restype = c_void_p
+
+ffi.lib.LLVMPY_GetConstantSequenceElement.argtypes = [ffi.LLVMValueRef, c_uint]
+ffi.lib.LLVMPY_GetConstantSequenceElement.restype = ffi.LLVMValueRef
+
+ffi.lib.LLVMPY_GetConstantSequenceNumElements.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_GetConstantSequenceNumElements.restype = c_size_t
