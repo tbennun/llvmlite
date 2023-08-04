@@ -1,7 +1,6 @@
 from ctypes import (POINTER, byref, cast, c_char_p, c_double, c_int, c_size_t,
                     c_uint, c_uint64, c_bool, c_void_p)
 import enum
-import warnings
 
 from llvmlite.binding import ffi
 from llvmlite.binding.common import _decode_string, _encode_string
@@ -350,15 +349,19 @@ class ValueRef(ffi.ObjectRef):
         parents.update(instruction=self)
         return _IncomingBlocksIterator(it, parents)
 
-    def get_constant_value(self, signed=False):
+    def get_constant_value(self, signed_int=False, round_fp=False):
         """
         Return the constant value, either as a literal (when supported)
         or as a string.
 
         Parameters
         -----------
-        signed : bool
+        signed_int : bool
             if True and the constant is an integer, returns a signed version
+        round_fp : bool
+            if True and the constant is a floating point value, rounds the
+            result upon accuracy loss (e.g., when querying an fp128 value).
+            By default, raises an exception on accuracy loss
         """
         if not self.is_constant:
             raise ValueError('expected constant value, got %s' %
@@ -374,31 +377,37 @@ class ValueRef(ffi.ObjectRef):
             return int.from_bytes(
                 asbytes,
                 ('little' if little_endian.value else 'big'),
-                signed=signed,
+                signed=signed_int,
             )
         elif self.value_kind == ValueKind.constant_fp:
-            # Convert floating-point values to double (Python float)
+            # Convert floating-point values to double-precision (Python float)
             accuracy_loss = c_bool(False)
             value = ffi.lib.LLVMPY_GetConstantFPValue(self,
                                                       byref(accuracy_loss))
-            if accuracy_loss.value:
-                warnings.warn(
+            if accuracy_loss.value and not round_fp:
+                raise ValueError(
                     'Accuracy loss encountered in conversion of constant '
-                    f'value {str(self)}', BytesWarning)
+                    f'value {str(self)}')
 
             return value
         elif self.value_kind == ValueKind.constant_expr:
             # Convert constant expressions to their corresponding operands
             inst = self.as_instruction()
-            return [op.get_constant_value(signed) for op in inst.operands]
+            return [
+                op.get_constant_value(signed_int, round_fp)
+                for op in inst.operands
+            ]
         elif self.value_kind == ValueKind.global_variable:
             # Obtain constant value from global initializer
-            return self.initializer.get_constant_value(signed)
+            return self.initializer.get_constant_value(signed_int, round_fp)
         elif (self.value_kind
               in (ValueKind.constant_array, ValueKind.constant_vector,
                   ValueKind.constant_struct)):
             # Convert constant aggregates to lists
-            return [op.get_constant_value(signed) for op in self.operands]
+            return [
+                op.get_constant_value(signed_int, round_fp)
+                for op in self.operands
+            ]
         elif (self.value_kind in (ValueKind.constant_data_array,
                                   ValueKind.constant_data_vector)):
             # Try to get the value as a constant data (sequential)
@@ -409,8 +418,8 @@ class ValueRef(ffi.ObjectRef):
             num_elements = ffi.lib.LLVMPY_GetConstantSequenceNumElements(self)
             return [
                 ValueRef(ffi.lib.LLVMPY_GetConstantSequenceElement(self, i),
-                         self._kind, self._parents).get_constant_value()
-                for i in range(num_elements)
+                         self._kind, self._parents).get_constant_value(
+                             signed_int, round_fp) for i in range(num_elements)
             ]
 
         # Otherwise, return the IR string

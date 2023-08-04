@@ -1,11 +1,7 @@
-from ctypes import (POINTER, byref, cast, c_char_p, c_double, c_int, c_size_t,
-                    c_uint, c_uint64, c_bool, c_void_p)
-import enum
-import warnings
+from ctypes import c_char_p, c_size_t, c_uint, c_bool, c_void_p
 
 from llvmlite.binding import ffi
-from llvmlite.binding.common import _decode_string, _encode_string
-from llvmlite.binding.typeref import TypeRef
+
 
 class AttributeRef(ffi.ObjectRef):
 
@@ -26,7 +22,7 @@ class AttributeRef(ffi.ObjectRef):
         return ffi.lib.LLVMPY_AttributeIsString(self)
 
     @property
-    def is_enum(self):
+    def enum_kind(self):
         return ffi.lib.LLVMPY_GetEnumAttributeKind(self)
 
     def __str__(self):
@@ -52,6 +48,7 @@ class AttributeRef(ffi.ObjectRef):
             it = ffi.lib.LLVMPY_ArgumentAttributesIter(value)
             itr = _AttributeSetIterator(it)
         return itr
+
 
 class _AttributeIterator(ffi.ObjectRef):
 
@@ -84,6 +81,7 @@ class _AttributeSetIterator(_AttributeIterator):
 
     def _next(self):
         return AttributeRef(ffi.lib.LLVMPY_AttributeSetIterNext(self))
+
 
 ffi.lib.LLVMPY_GetEnumAttributeKindForName.argtypes = [c_char_p, c_size_t]
 ffi.lib.LLVMPY_GetEnumAttributeKindForName.restype = c_uint
@@ -133,4 +131,3 @@ ffi.lib.LLVMPY_AttributeIsString.restype = c_bool
 
 ffi.lib.LLVMPY_GetAttributeAsString.argtypes = [ffi.LLVMAttributeRef]
 ffi.lib.LLVMPY_GetAttributeAsString.restype = c_void_p
-

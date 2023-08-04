@@ -138,7 +138,7 @@ LLVMPY_DisposeAttributeSetIter(LLVMAttributeSetIteratorRef GI) {
     delete llvm::unwrap(GI);
 }
 
-API_EXPORT(unsigned)
+API_EXPORT(unsigned int)
 LLVMPY_GetEnumAttributeKindForName(const char *name, size_t len) {
     /* zero is returned if no match */
     return LLVMGetEnumAttributeKindForName(name, len);
