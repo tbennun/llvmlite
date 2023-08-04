@@ -21,10 +21,6 @@ class AttributeRef(ffi.ObjectRef):
     def is_string(self):
         return ffi.lib.LLVMPY_AttributeIsString(self)
 
-    @property
-    def enum_kind(self):
-        return ffi.lib.LLVMPY_GetEnumAttributeKind(self)
-
     def __str__(self):
         return ffi.ret_string(ffi.lib.LLVMPY_GetAttributeAsString(self))
 

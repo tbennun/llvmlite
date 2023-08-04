@@ -1578,13 +1578,14 @@ class TestValueRef(BaseTest):
     def test_function_attributes(self):
         mod = self.module(asm_attributes)
         for func in mod.functions:
-            attrs = list(func.attributes)
+            attr_sets = list(func.attributes)
+            attrs = list(attr_sets[0])
             if func.name == 'a_readonly_func':
-                self.assertEqual(attrs, [b'readonly'])
+                self.assertEqual(list(map(str, attrs)), ['readonly'])
             elif func.name == 'a_arg0_return_func':
                 self.assertEqual(attrs, [])
                 args = list(func.arguments)
-                self.assertEqual(list(args[0].attributes), [b'returned'])
+                self.assertEqual(list(map(str, list(args[0].attributes))), ['returned'])
                 self.assertEqual(list(args[1].attributes), [])
 
     def test_value_kind(self):
