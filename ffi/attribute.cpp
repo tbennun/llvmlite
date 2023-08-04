@@ -50,7 +50,7 @@ static AttributeSetIterator *unwrap(LLVMAttributeSetIteratorRef GI) {
     return reinterpret_cast<AttributeSetIterator *>(GI);
 }
 
-}
+} // namespace llvm
 
 extern "C" {
 
@@ -106,7 +106,7 @@ LLVMPY_AttributeListIterNext(LLVMAttributeListIteratorRef GI) {
     using namespace llvm;
     AttributeListIterator *iter = unwrap(GI);
     if (iter->cur != iter->end) {
-        const llvm::AttributeSet* attrs = iter->cur;
+        const llvm::AttributeSet *attrs = iter->cur;
         iter->cur++;
         return wrap(new AttributeSetIterator(attrs->begin(), attrs->end()));
     } else {
@@ -120,7 +120,7 @@ LLVMPY_AttributeSetIterNext(LLVMAttributeSetIteratorRef GI) {
     AttributeSetIterator *iter = unwrap(GI);
 
     if (iter->cur != iter->end) {
-        const Attribute* attr = iter->cur;
+        const Attribute *attr = iter->cur;
         iter->cur++;
         return wrap(static_cast<const Attribute>(*attr));
     } else {
@@ -152,39 +152,39 @@ LLVMPY_AddFunctionAttr(LLVMValueRef Fn, unsigned AttrKind) {
 }
 
 API_EXPORT(unsigned)
-LLVMPY_GetEnumAttributeKind(LLVMAttributeRef A){
-  return LLVMGetEnumAttributeKind(A);
+LLVMPY_GetEnumAttributeKind(LLVMAttributeRef A) {
+    return LLVMGetEnumAttributeKind(A);
 }
 
 API_EXPORT(bool)
-LLVMPY_AttributeIsType(LLVMAttributeRef A){
-  llvm::Attribute attr = llvm::unwrap(A);
-  return attr.isTypeAttribute();
+LLVMPY_AttributeIsType(LLVMAttributeRef A) {
+    llvm::Attribute attr = llvm::unwrap(A);
+    return attr.isTypeAttribute();
 }
 
 API_EXPORT(bool)
-LLVMPY_AttributeIsInt(LLVMAttributeRef A){
-  llvm::Attribute attr = llvm::unwrap(A);
-  return attr.isIntAttribute();
+LLVMPY_AttributeIsInt(LLVMAttributeRef A) {
+    llvm::Attribute attr = llvm::unwrap(A);
+    return attr.isIntAttribute();
 }
 
 API_EXPORT(bool)
-LLVMPY_AttributeIsEnum(LLVMAttributeRef A){
-  llvm::Attribute attr = llvm::unwrap(A);
-  return attr.isEnumAttribute();
+LLVMPY_AttributeIsEnum(LLVMAttributeRef A) {
+    llvm::Attribute attr = llvm::unwrap(A);
+    return attr.isEnumAttribute();
 }
 
 API_EXPORT(bool)
-LLVMPY_AttributeIsString(LLVMAttributeRef A){
-  llvm::Attribute attr = llvm::unwrap(A);
-  return attr.isStringAttribute();
+LLVMPY_AttributeIsString(LLVMAttributeRef A) {
+    llvm::Attribute attr = llvm::unwrap(A);
+    return attr.isStringAttribute();
 }
 
-API_EXPORT(const char*)
-LLVMPY_GetAttributeAsString(LLVMAttributeRef A){
-  llvm::Attribute attr = llvm::unwrap(A);
-  auto str =  attr.getAsString();
-  return LLVMPY_CreateString(str.c_str());
+API_EXPORT(const char *)
+LLVMPY_GetAttributeAsString(LLVMAttributeRef A) {
+    llvm::Attribute attr = llvm::unwrap(A);
+    auto str = attr.getAsString();
+    return LLVMPY_CreateString(str.c_str());
 }
 
 } // end extern "C"
