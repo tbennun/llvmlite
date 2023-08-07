@@ -462,17 +462,6 @@ class _OperandsIterator(_ValueIterator):
         return ffi.lib.LLVMPY_OperandsIterNext(self)
 
 
-class _IncomingBlocksIterator(_ValueIterator):
-
-    kind = 'block'
-
-    def _dispose(self):
-        self._capi.LLVMPY_DisposeIncomingBlocksIter(self)
-
-    def _next(self):
-        return ffi.lib.LLVMPY_IncomingBlocksIterNext(self)
-
-
 # FFI
 
 ffi.lib.LLVMPY_PrintValueToString.argtypes = [
@@ -544,9 +533,6 @@ ffi.lib.LLVMPY_BlockInstructionsIter.restype = ffi.LLVMInstructionsIterator
 ffi.lib.LLVMPY_InstructionOperandsIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_InstructionOperandsIter.restype = ffi.LLVMOperandsIterator
 
-ffi.lib.LLVMPY_PhiIncomingBlocksIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_PhiIncomingBlocksIter.restype = ffi.LLVMIncomingBlocksIterator
-
 ffi.lib.LLVMPY_DisposeAttributeListIter.argtypes = [
     ffi.LLVMAttributeListIterator]
 
@@ -557,9 +543,6 @@ ffi.lib.LLVMPY_DisposeBlocksIter.argtypes = [ffi.LLVMBlocksIterator]
 ffi.lib.LLVMPY_DisposeInstructionsIter.argtypes = [ffi.LLVMInstructionsIterator]
 
 ffi.lib.LLVMPY_DisposeOperandsIter.argtypes = [ffi.LLVMOperandsIterator]
-
-ffi.lib.LLVMPY_DisposeIncomingBlocksIter.argtypes = [
-    ffi.LLVMIncomingBlocksIterator]
 
 ffi.lib.LLVMPY_AttributeListIterNext.argtypes = [ffi.LLVMAttributeListIterator]
 ffi.lib.LLVMPY_AttributeListIterNext.restype = c_void_p
@@ -578,9 +561,6 @@ ffi.lib.LLVMPY_InstructionsIterNext.restype = ffi.LLVMValueRef
 
 ffi.lib.LLVMPY_OperandsIterNext.argtypes = [ffi.LLVMOperandsIterator]
 ffi.lib.LLVMPY_OperandsIterNext.restype = ffi.LLVMValueRef
-
-ffi.lib.LLVMPY_IncomingBlocksIterNext.argtypes = [ffi.LLVMIncomingBlocksIterator]
-ffi.lib.LLVMPY_IncomingBlocksIterNext.restype = ffi.LLVMValueRef
 
 ffi.lib.LLVMPY_GetOpcodeName.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_GetOpcodeName.restype = c_void_p
