@@ -1718,6 +1718,11 @@ class TestTypeRef(BaseTest):
         self.assertEqual(vector_type.type_kind, llvm.TypeKind.vector)
         self.assertTrue(vector_type.is_vector)
 
+        funcptr = mod.get_function("sum").type
+        self.assertEqual(funcptr.type_kind, llvm.TypeKind.pointer)
+        functype, = funcptr.elements
+        self.assertEqual(functype.type_kind, llvm.TypeKind.function)
+
     def test_element_count(self):
         mod = self.module()
         glob_struct_type = mod.get_struct_type("struct.glob_type")
