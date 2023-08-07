@@ -174,13 +174,8 @@ LLVMPY_ArgumentAttributesIter(LLVMValueRef A) {
     using namespace llvm;
     Argument *arg = unwrap<Argument>(A);
     unsigned argno = arg->getArgNo();
-    const AttributeSet attrs = arg->getParent()->getAttributes().
-#if LLVM_VERSION_MAJOR < 14
-                               getParamAttributes(argno)
-#else
-                               getParamAttrs(argno)
-#endif
-        ;
+    const AttributeSet attrs =
+        arg->getParent()->getAttributes().getParamAttrs(argno);
     return wrap(new AttributeSetIterator(attrs.begin(), attrs.end()));
 }
 
