@@ -145,4 +145,14 @@ LLVMPY_GetElementType(LLVMTypeRef type) {
     }
     return nullptr;
 }
+
+API_EXPORT(bool)
+LLVMPY_IsFunctionVararg(LLVMTypeRef type) {
+    llvm::Type *unwrapped = llvm::unwrap(type);
+    llvm::FunctionType *ty = llvm::dyn_cast<llvm::FunctionType>(unwrapped);
+    if (ty != nullptr) {
+        return ty->isVarArg();
+    }
+    return false;
+}
 }
