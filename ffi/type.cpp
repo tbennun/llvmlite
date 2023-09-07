@@ -100,6 +100,20 @@ LLVMPY_TypeIsStruct(LLVMTypeRef type) {
     return llvm::unwrap(type)->isStructTy();
 }
 
+API_EXPORT(bool)
+LLVMPY_TypeIsOpaque(LLVMTypeRef type) {
+    llvm::Type *unwrapped = llvm::unwrap(type);
+    if (unwrapped->isOpaquePointerTy()) {
+        return true;
+    }
+    llvm::StructType *ty =
+        llvm::dyn_cast<llvm::StructType>(unwrapped);
+    if (ty) {
+        return ty->isOpaque();
+    }
+    return false;
+}
+
 API_EXPORT(int)
 LLVMPY_GetTypeElementCount(LLVMTypeRef type) {
     llvm::Type *unwrapped = llvm::unwrap(type);

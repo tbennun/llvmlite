@@ -68,6 +68,13 @@ class TypeRef(ffi.ObjectRef):
         return ffi.lib.LLVMPY_TypeIsVector(self)
 
     @property
+    def is_opaque(self):
+        """
+        Returns true is the type is an opaque data type or pointer.
+        """
+        return ffi.lib.LLVMPY_TypeIsOpaque(self)
+
+    @property
     def elements(self):
         """
         Returns iterator over enclosing types
@@ -172,6 +179,9 @@ ffi.lib.LLVMPY_TypeIsVector.restype = c_bool
 
 ffi.lib.LLVMPY_TypeIsStruct.argtypes = [ffi.LLVMTypeRef]
 ffi.lib.LLVMPY_TypeIsStruct.restype = c_bool
+
+ffi.lib.LLVMPY_TypeIsOpaque.argtypes = [ffi.LLVMTypeRef]
+ffi.lib.LLVMPY_TypeIsOpaque.restype = c_bool
 
 ffi.lib.LLVMPY_GetTypeKind.argtypes = [ffi.LLVMTypeRef]
 ffi.lib.LLVMPY_GetTypeKind.restype = c_int
