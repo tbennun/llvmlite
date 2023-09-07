@@ -306,6 +306,15 @@ LLVMPY_GetConstantSequenceNumElements(LLVMValueRef Val) {
     return 0;
 }
 
+API_EXPORT(bool)
+LLVMPY_HasInitializer(LLVMValueRef Val) {
+    if (llvm::GlobalVariable *CI =
+            llvm::dyn_cast<llvm::GlobalVariable>((llvm::Value *)Val)) {
+        return CI->hasInitializer();
+    }
+    return false;
+}
+
 API_EXPORT(LLVMValueRef)
 LLVMPY_GetInitializer(LLVMValueRef Val) {
     if (llvm::GlobalVariable *CI =

@@ -242,12 +242,23 @@ class ValueRef(ffi.ObjectRef):
         return TypeRef(ffi.lib.LLVMPY_TypeOfMemory(self))
 
     @property
+    def has_initializer(self):
+        """
+        Returns True if a global variable has an initializer.
+        """
+        if self.value_kind != ValueKind.global_variable:
+            raise ValueError('expected global value, got %s' % (self._kind))
+        return ffi.lib.LLVMPY_HasInitializer(self)
+
+    @property
     def initializer(self):
         """
         Returns the initializer of a global variable.
         """
         if self.value_kind != ValueKind.global_variable:
             raise ValueError('expected global value, got %s' % (self._kind))
+        if not self.has_initializer:
+            return None
         return ValueRef(ffi.lib.LLVMPY_GetInitializer(self), self._kind,
                         self._parents)
 
@@ -632,6 +643,9 @@ ffi.lib.LLVMPY_GetConstantFPValue.restype = c_double
 
 ffi.lib.LLVMPY_ConstantExprAsInstruction.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_ConstantExprAsInstruction.restype = ffi.LLVMValueRef
+
+ffi.lib.LLVMPY_HasInitializer.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_HasInitializer.restype = c_bool
 
 ffi.lib.LLVMPY_GetInitializer.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_GetInitializer.restype = ffi.LLVMValueRef
