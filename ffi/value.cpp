@@ -142,17 +142,10 @@ LLVMPY_BlockInstructionsIter(LLVMValueRef B) {
 }
 
 API_EXPORT(LLVMOperandsIteratorRef)
-LLVMPY_InstructionOperandsIter(LLVMValueRef I) {
+LLVMPY_OperandsIter(LLVMValueRef I) {
     using namespace llvm;
-    Instruction *inst = unwrap<Instruction>(I);
-    return wrap(new OperandsIterator(inst->op_begin(), inst->op_end()));
-}
-
-API_EXPORT(LLVMOperandsIteratorRef)
-LLVMPY_ConstantAggregateOperandsIter(LLVMValueRef I) {
-    using namespace llvm;
-    ConstantAggregate *inst = unwrap<ConstantAggregate>(I);
-    return wrap(new OperandsIterator(inst->op_begin(), inst->op_end()));
+    User *user = unwrap<User>(I);
+    return wrap(new OperandsIterator(user->op_begin(), user->op_end()));
 }
 
 API_EXPORT(LLVMIncomingBlocksIteratorRef)

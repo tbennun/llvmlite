@@ -330,15 +330,11 @@ class ValueRef(ffi.ObjectRef):
         """
         if (not self.is_instruction and self.value_kind
                 not in (ValueKind.constant_array, ValueKind.constant_vector,
-                        ValueKind.constant_struct)):
+                        ValueKind.constant_struct, ValueKind.global_alias)):
             raise ValueError(
-                'expected instruction value or constant aggregate,'
-                ' got %s' % (self._kind, ))
-        if self.is_instruction:
-            it = ffi.lib.LLVMPY_InstructionOperandsIter(self)
-        else:
-            it = ffi.lib.LLVMPY_ConstantAggregateOperandsIter(self)
-
+                'expected instruction value, constant aggregate, or global.'
+                ' Got %s' % (self._kind, ))
+        it = ffi.lib.LLVMPY_OperandsIter(self)
         parents = self._parents.copy()
         parents.update(instruction=self)
         return _OperandsIterator(it, parents)
@@ -581,11 +577,8 @@ ffi.lib.LLVMPY_FunctionArgumentsIter.restype = ffi.LLVMArgumentsIterator
 ffi.lib.LLVMPY_BlockInstructionsIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_BlockInstructionsIter.restype = ffi.LLVMInstructionsIterator
 
-ffi.lib.LLVMPY_InstructionOperandsIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_InstructionOperandsIter.restype = ffi.LLVMOperandsIterator
-
-ffi.lib.LLVMPY_ConstantAggregateOperandsIter.argtypes = [ffi.LLVMValueRef]
-ffi.lib.LLVMPY_ConstantAggregateOperandsIter.restype = ffi.LLVMOperandsIterator
+ffi.lib.LLVMPY_OperandsIter.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_OperandsIter.restype = ffi.LLVMOperandsIterator
 
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.restype = ffi.LLVMIncomingBlocksIterator
