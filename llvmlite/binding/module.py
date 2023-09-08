@@ -204,6 +204,24 @@ class ModuleRef(ffi.ObjectRef):
         it = ffi.lib.LLVMPY_ModuleTypesIter(self)
         return _TypesIterator(it, dict(module=self))
 
+    @property
+    def aliases(self):
+        """
+        Return an iterator over this module's function aliases.
+        The iterator will yield a ValueRef for each alias.
+        """
+        it = ffi.lib.LLVMPY_ModuleAliasesIter(self)
+        return _AliasesIterator(it, dict(module=self))
+
+    @property
+    def ifuncs(self):
+        """
+        Return an iterator over this module's ifuncs.
+        The iterator will yield a ValueRef for each ifunc.
+        """
+        it = ffi.lib.LLVMPY_ModuleIFuncsIter(self)
+        return _IFuncsIterator(it, dict(module=self))
+
     def clone(self):
         return ModuleRef(ffi.lib.LLVMPY_CloneModule(self), self._context)
 
@@ -239,6 +257,28 @@ class _GlobalsIterator(_Iterator):
 
     def _next(self):
         return ffi.lib.LLVMPY_GlobalsIterNext(self)
+
+
+class _AliasesIterator(_Iterator):
+
+    kind = 'global'
+
+    def _dispose(self):
+        self._capi.LLVMPY_DisposeAliasesIter(self)
+
+    def _next(self):
+        return ffi.lib.LLVMPY_AliasesIterNext(self)
+
+
+class _IFuncsIterator(_Iterator):
+
+    kind = 'global'
+
+    def _dispose(self):
+        self._capi.LLVMPY_DisposeIFuncsIter(self)
+
+    def _next(self):
+        return ffi.lib.LLVMPY_IFuncsIterNext(self)
 
 
 class _FunctionsIterator(_Iterator):
@@ -336,6 +376,22 @@ ffi.lib.LLVMPY_FunctionsIterNext.restype = ffi.LLVMValueRef
 
 ffi.lib.LLVMPY_TypesIterNext.argtypes = [ffi.LLVMTypesIterator]
 ffi.lib.LLVMPY_TypesIterNext.restype = ffi.LLVMTypeRef
+
+ffi.lib.LLVMPY_ModuleAliasesIter.argtypes = [ffi.LLVMModuleRef]
+ffi.lib.LLVMPY_ModuleAliasesIter.restype = ffi.LLVMAliasesIterator
+
+ffi.lib.LLVMPY_DisposeAliasesIter.argtypes = [ffi.LLVMAliasesIterator]
+
+ffi.lib.LLVMPY_AliasesIterNext.argtypes = [ffi.LLVMAliasesIterator]
+ffi.lib.LLVMPY_AliasesIterNext.restype = ffi.LLVMValueRef
+
+ffi.lib.LLVMPY_ModuleIFuncsIter.argtypes = [ffi.LLVMModuleRef]
+ffi.lib.LLVMPY_ModuleIFuncsIter.restype = ffi.LLVMIFuncsIterator
+
+ffi.lib.LLVMPY_DisposeIFuncsIter.argtypes = [ffi.LLVMIFuncsIterator]
+
+ffi.lib.LLVMPY_IFuncsIterNext.argtypes = [ffi.LLVMIFuncsIterator]
+ffi.lib.LLVMPY_IFuncsIterNext.restype = ffi.LLVMValueRef
 
 ffi.lib.LLVMPY_CloneModule.argtypes = [ffi.LLVMModuleRef]
 ffi.lib.LLVMPY_CloneModule.restype = ffi.LLVMModuleRef

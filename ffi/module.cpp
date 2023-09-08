@@ -54,6 +54,30 @@ class TypesIterator {
 
 typedef TypesIterator *LLVMTypesIteratorRef;
 
+/* An iterator around a module's aliases, including the stop condition */
+struct AliasesIterator {
+    typedef llvm::Module::alias_iterator iterator;
+    iterator cur;
+    iterator end;
+
+    AliasesIterator(iterator cur, iterator end) : cur(cur), end(end) {}
+};
+
+struct OpaqueAliasesIterator;
+typedef OpaqueAliasesIterator *LLVMAliasesIteratorRef;
+
+/* An iterator around a module's ifuncs, including the stop condition */
+struct IFuncsIterator {
+    typedef llvm::Module::ifunc_iterator iterator;
+    iterator cur;
+    iterator end;
+
+    IFuncsIterator(iterator cur, iterator end) : cur(cur), end(end) {}
+};
+
+struct OpaqueIFuncsIterator;
+typedef OpaqueIFuncsIterator *LLVMIFuncsIteratorRef;
+
 //
 // Local helper functions
 //
@@ -82,6 +106,22 @@ static LLVMTypesIteratorRef wrap(TypesIterator *TyI) {
 
 static TypesIterator *unwrap(LLVMTypesIteratorRef TyI) {
     return reinterpret_cast<TypesIterator *>(TyI);
+}
+
+static LLVMAliasesIteratorRef wrap(AliasesIterator *TyI) {
+    return reinterpret_cast<LLVMAliasesIteratorRef>(TyI);
+}
+
+static AliasesIterator *unwrap(LLVMAliasesIteratorRef TyI) {
+    return reinterpret_cast<AliasesIterator *>(TyI);
+}
+
+static LLVMIFuncsIteratorRef wrap(IFuncsIterator *TyI) {
+    return reinterpret_cast<LLVMIFuncsIteratorRef>(TyI);
+}
+
+static IFuncsIterator *unwrap(LLVMIFuncsIteratorRef TyI) {
+    return reinterpret_cast<IFuncsIterator *>(TyI);
 }
 
 } // end namespace llvm
@@ -188,6 +228,20 @@ LLVMPY_ModuleTypesIter(LLVMModuleRef M) {
     return llvm::wrap(iter);
 }
 
+API_EXPORT(LLVMAliasesIteratorRef)
+LLVMPY_ModuleAliasesIter(LLVMModuleRef M) {
+    llvm::Module *mod = llvm::unwrap(M);
+    auto *iter = new AliasesIterator(mod->alias_begin(), mod->alias_end());
+    return llvm::wrap(iter);
+}
+
+API_EXPORT(LLVMIFuncsIteratorRef)
+LLVMPY_ModuleIFuncsIter(LLVMModuleRef M) {
+    llvm::Module *mod = llvm::unwrap(M);
+    auto *iter = new IFuncsIterator(mod->ifunc_begin(), mod->ifunc_end());
+    return llvm::wrap(iter);
+}
+
 /*
   These functions return NULL if we are at the end
 */
@@ -218,6 +272,28 @@ LLVMPY_TypesIterNext(LLVMTypesIteratorRef TyI) {
     return llvm::wrap(llvm::unwrap(TyI)->next());
 }
 
+API_EXPORT(LLVMValueRef)
+LLVMPY_AliasesIterNext(LLVMAliasesIteratorRef GI) {
+    using namespace llvm;
+    AliasesIterator *iter = unwrap(GI);
+    if (iter->cur != iter->end) {
+        return wrap(&*iter->cur++);
+    } else {
+        return NULL;
+    }
+}
+
+API_EXPORT(LLVMValueRef)
+LLVMPY_IFuncsIterNext(LLVMIFuncsIteratorRef GI) {
+    using namespace llvm;
+    IFuncsIterator *iter = unwrap(GI);
+    if (iter->cur != iter->end) {
+        return wrap(&*iter->cur++);
+    } else {
+        return NULL;
+    }
+}
+
 API_EXPORT(void)
 LLVMPY_DisposeGlobalsIter(LLVMGlobalsIteratorRef GI) {
     delete llvm::unwrap(GI);
@@ -230,6 +306,12 @@ LLVMPY_DisposeFunctionsIter(LLVMFunctionsIteratorRef GI) {
 
 API_EXPORT(void)
 LLVMPY_DisposeTypesIter(LLVMTypesIteratorRef TyI) { delete llvm::unwrap(TyI); }
+
+API_EXPORT(void)
+LLVMPY_DisposeAliasesIter(LLVMAliasesIteratorRef GI) { delete llvm::unwrap(GI); }
+
+API_EXPORT(void)
+LLVMPY_DisposeIFuncsIter(LLVMIFuncsIteratorRef GI) { delete llvm::unwrap(GI); }
 
 API_EXPORT(LLVMModuleRef)
 LLVMPY_CloneModule(LLVMModuleRef M) { return LLVMCloneModule(M); }
