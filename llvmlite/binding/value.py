@@ -1,5 +1,5 @@
 from ctypes import (POINTER, byref, cast, c_char_p, c_double, c_int, c_size_t,
-                    c_uint, c_uint64, c_bool, c_void_p)
+                    c_uint, c_uint8, c_uint64, c_bool, c_void_p)
 import enum
 
 from llvmlite.binding import ffi
@@ -377,10 +377,10 @@ class ValueRef(ffi.ObjectRef):
         if self.value_kind == ValueKind.constant_int:
             # Python integers are also arbitrary-precision
             little_endian = c_bool(False)
-            words = ffi.lib.LLVMPY_GetConstantIntNumWords(self)
+            numbytes = self.type.type_width // 8
             ptr = ffi.lib.LLVMPY_GetConstantIntRawValue(
                 self, byref(little_endian))
-            asbytes = bytes(cast(ptr, POINTER(c_uint64 * words)).contents)
+            asbytes = bytes(cast(ptr, POINTER(c_uint8 * numbytes)).contents)
             return int.from_bytes(
                 asbytes,
                 ('little' if little_endian.value else 'big'),
