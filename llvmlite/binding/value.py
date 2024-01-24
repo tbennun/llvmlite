@@ -1,5 +1,5 @@
-from ctypes import (POINTER, byref, cast, c_char_p, c_double, c_int, c_size_t,
-                    c_uint, c_uint8, c_uint64, c_bool, c_void_p)
+from ctypes import (POINTER, byref, cast, c_char_p, c_double, c_int, c_int64, 
+                    c_size_t, c_uint, c_uint8, c_uint64, c_bool, c_void_p)
 import enum
 
 from llvmlite.binding import ffi
@@ -356,6 +356,17 @@ class ValueRef(ffi.ObjectRef):
         parents.update(instruction=self)
         return _IncomingBlocksIterator(it, parents)
 
+    @property
+    def indices(self):
+        if not self.is_instruction or self.opcode not in ('insertvalue',
+                                                          'extractvalue'):
+            raise ValueError('expected insert/extractvalue value, got %s' %
+                             (self._kind, ))
+        it = ffi.lib.LLVMPY_IndicesIter(self)
+        parents = self._parents.copy()
+        parents.update(instruction=self)
+        return _IndicesIterator(it, parents)
+
     def get_constant_value(self, signed_int=False, round_fp=False):
         """
         Return the constant value, either as a literal (when supported)
@@ -525,6 +536,21 @@ class _IncomingBlocksIterator(_ValueIterator):
         return ffi.lib.LLVMPY_IncomingBlocksIterNext(self)
 
 
+class _IndicesIterator(_ValueIterator):
+
+    kind = 'block'
+
+    def _dispose(self):
+        self._capi.LLVMPY_DisposeIndicesIter(self)
+
+    def __next__(self):
+        val = ffi.lib.LLVMPY_IndicesIterNext(self)
+        if val >= 0:
+            return val
+        else:  # val < 0 means that the iterator has finished
+            raise StopIteration
+
+
 # FFI
 
 ffi.lib.LLVMPY_PrintValueToString.argtypes = [
@@ -583,6 +609,9 @@ ffi.lib.LLVMPY_OperandsIter.restype = ffi.LLVMOperandsIterator
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_PhiIncomingBlocksIter.restype = ffi.LLVMIncomingBlocksIterator
 
+ffi.lib.LLVMPY_IndicesIter.argtypes = [ffi.LLVMValueRef]
+ffi.lib.LLVMPY_IndicesIter.restype = ffi.LLVMIndicesIterator
+
 ffi.lib.LLVMPY_DisposeBlocksIter.argtypes = [ffi.LLVMBlocksIterator]
 
 ffi.lib.LLVMPY_DisposeInstructionsIter.argtypes = [
@@ -594,6 +623,8 @@ ffi.lib.LLVMPY_DisposeOperandsIter.argtypes = [ffi.LLVMOperandsIterator]
 ffi.lib.LLVMPY_DisposeIncomingBlocksIter.argtypes = [
     ffi.LLVMIncomingBlocksIterator
 ]
+
+ffi.lib.LLVMPY_DisposeIndicesIter.argtypes = [ffi.LLVMIndicesIterator]
 
 ffi.lib.LLVMPY_BlocksIterNext.argtypes = [ffi.LLVMBlocksIterator]
 ffi.lib.LLVMPY_BlocksIterNext.restype = ffi.LLVMValueRef
@@ -611,6 +642,9 @@ ffi.lib.LLVMPY_IncomingBlocksIterNext.argtypes = [
     ffi.LLVMIncomingBlocksIterator
 ]
 ffi.lib.LLVMPY_IncomingBlocksIterNext.restype = ffi.LLVMValueRef
+
+ffi.lib.LLVMPY_IndicesIterNext.argtypes = [ffi.LLVMIndicesIterator]
+ffi.lib.LLVMPY_IndicesIterNext.restype = c_int64
 
 ffi.lib.LLVMPY_GetOpcodeName.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_GetOpcodeName.restype = c_void_p

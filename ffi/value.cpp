@@ -74,6 +74,19 @@ struct IncomingBlocksIterator {
 struct OpaqueIncomingBlocksIterator;
 typedef OpaqueIncomingBlocksIterator *LLVMIncomingBlocksIteratorRef;
 
+/* An iterator around a instruction's operands, including the stop condition */
+struct IndicesIterator {
+    typedef const unsigned* const_iterator;
+    const_iterator cur;
+    const_iterator end;
+
+    IndicesIterator(const_iterator cur, const_iterator end)
+        : cur(cur), end(end) {}
+};
+
+struct OpaqueIndicesIterator;
+typedef OpaqueIndicesIterator *LLVMIndicesIteratorRef;
+
 namespace llvm {
 
 static LLVMBlocksIteratorRef wrap(BlocksIterator *GI) {
@@ -116,6 +129,14 @@ static IncomingBlocksIterator *unwrap(LLVMIncomingBlocksIteratorRef GI) {
     return reinterpret_cast<IncomingBlocksIterator *>(GI);
 }
 
+static LLVMIndicesIteratorRef wrap(IndicesIterator *GI) {
+    return reinterpret_cast<LLVMIndicesIteratorRef>(GI);
+}
+
+static IndicesIterator *unwrap(LLVMIndicesIteratorRef GI) {
+    return reinterpret_cast<IndicesIterator *>(GI);
+}
+
 } // namespace llvm
 
 extern "C" {
@@ -154,6 +175,21 @@ LLVMPY_PhiIncomingBlocksIter(LLVMValueRef I) {
     PHINode *inst = unwrap<PHINode>(I);
     return wrap(
         new IncomingBlocksIterator(inst->block_begin(), inst->block_end()));
+}
+
+API_EXPORT(LLVMIndicesIteratorRef)
+LLVMPY_IndicesIter(LLVMValueRef I) {
+    if (llvm::InsertValueInst *CI =
+            llvm::dyn_cast<llvm::InsertValueInst>((llvm::Value *)I)) {
+        return llvm::wrap(
+            new IndicesIterator(CI->idx_begin(), CI->idx_end()));
+    }
+    if (llvm::ExtractValueInst *CI =
+            llvm::dyn_cast<llvm::ExtractValueInst>((llvm::Value *)I)) {
+        return llvm::wrap(
+            new IndicesIterator(CI->idx_begin(), CI->idx_end()));
+    }
+    return nullptr;
 }
 
 API_EXPORT(LLVMValueRef)
@@ -211,6 +247,17 @@ LLVMPY_IncomingBlocksIterNext(LLVMIncomingBlocksIteratorRef GI) {
     }
 }
 
+API_EXPORT(int64_t)
+LLVMPY_IndicesIterNext(LLVMIndicesIteratorRef GI) {
+    using namespace llvm;
+    IndicesIterator *iter = unwrap(GI);
+    if (iter->cur != iter->end) {
+        return *iter->cur++;
+    } else {
+        return int64_t(-1);
+    }
+}
+
 API_EXPORT(void)
 LLVMPY_DisposeBlocksIter(LLVMBlocksIteratorRef GI) { delete llvm::unwrap(GI); }
 
@@ -231,6 +278,11 @@ LLVMPY_DisposeOperandsIter(LLVMOperandsIteratorRef GI) {
 
 API_EXPORT(void)
 LLVMPY_DisposeIncomingBlocksIter(LLVMIncomingBlocksIteratorRef GI) {
+    delete llvm::unwrap(GI);
+}
+
+API_EXPORT(void)
+LLVMPY_DisposeIndicesIter(LLVMIndicesIteratorRef GI) {
     delete llvm::unwrap(GI);
 }
 
