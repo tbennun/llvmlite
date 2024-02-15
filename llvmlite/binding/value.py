@@ -1,4 +1,4 @@
-from ctypes import (POINTER, byref, cast, c_char_p, c_double, c_int, c_int64, 
+from ctypes import (POINTER, byref, cast, c_char_p, c_double, c_int, c_int64,
                     c_size_t, c_uint, c_uint8, c_uint64, c_bool, c_void_p)
 import enum
 
@@ -176,7 +176,11 @@ class ValueRef(ffi.ObjectRef):
 
     @property
     def linkage(self):
-        return Linkage(ffi.lib.LLVMPY_GetLinkage(self))
+        if self.value_kind in (ValueKind.global_alias, ValueKind.global_ifunc,
+                               ValueKind.global_variable):
+            return Linkage(ffi.lib.LLVMPY_GetLinkage(self))
+        raise TypeError(f"expected global value, got {self}."
+                        f"ValueKind is {self.value_kind.name}")
 
     @linkage.setter
     def linkage(self, value):
@@ -213,8 +217,7 @@ class ValueRef(ffi.ObjectRef):
             attribute name
         """
         if not self.is_function:
-            raise ValueError('expected function value, got %s' %
-                             (self._kind, ))
+            raise ValueError('expected function value, got %s' % (self._kind, ))
         attrname = str(attr)
         attrval = ffi.lib.LLVMPY_GetEnumAttributeKindForName(
             _encode_string(attrname), len(attrname))
@@ -236,8 +239,8 @@ class ValueRef(ffi.ObjectRef):
         The memory type accessed by this instruction's LLVM type.
         """
         if not self.is_memory_instruction:
-            raise ValueError(
-                'Argument is not a memory instruction {!r}'.format(str(self)))
+            raise ValueError('Argument is not a memory instruction {!r}'.format(
+                str(self)))
 
         return TypeRef(ffi.lib.LLVMPY_TypeOfMemory(self))
 
@@ -288,8 +291,7 @@ class ValueRef(ffi.ObjectRef):
         The iterator will yield a ValueRef for each block.
         """
         if not self.is_function:
-            raise ValueError('expected function value, got %s' %
-                             (self._kind, ))
+            raise ValueError('expected function value, got %s' % (self._kind, ))
         it = ffi.lib.LLVMPY_FunctionBlocksIter(self)
         parents = self._parents.copy()
         parents.update(function=self)
@@ -302,8 +304,7 @@ class ValueRef(ffi.ObjectRef):
         The iterator will yield a ValueRef for each argument.
         """
         if not self.is_function:
-            raise ValueError('expected function value, got %s' %
-                             (self._kind, ))
+            raise ValueError('expected function value, got %s' % (self._kind, ))
         it = ffi.lib.LLVMPY_FunctionArgumentsIter(self)
         parents = self._parents.copy()
         parents.update(function=self)
@@ -382,8 +383,7 @@ class ValueRef(ffi.ObjectRef):
             By default, raises an exception on accuracy loss
         """
         if not self.is_constant:
-            raise ValueError('expected constant value, got %s' %
-                             (self._kind, ))
+            raise ValueError('expected constant value, got %s' % (self._kind, ))
 
         if self.value_kind == ValueKind.constant_int:
             # Python integers are also arbitrary-precision
