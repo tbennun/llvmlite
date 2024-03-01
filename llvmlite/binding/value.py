@@ -177,7 +177,7 @@ class ValueRef(ffi.ObjectRef):
     @property
     def linkage(self):
         if self.value_kind in (ValueKind.global_alias, ValueKind.global_ifunc,
-                               ValueKind.global_variable):
+                               ValueKind.global_variable, ValueKind.function):
             return Linkage(ffi.lib.LLVMPY_GetLinkage(self))
         raise TypeError(f"expected global value, got {self}."
                         f"ValueKind is {self.value_kind.name}")
