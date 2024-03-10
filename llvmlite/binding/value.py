@@ -262,7 +262,7 @@ class ValueRef(ffi.ObjectRef):
             raise ValueError('expected global value, got %s' % (self._kind))
         if not self.has_initializer:
             return None
-        return ValueRef(ffi.lib.LLVMPY_GetInitializer(self), self._kind,
+        return ValueRef(ffi.lib.LLVMPY_GetInitializer(self), 'initializer',
                         self._parents)
 
     @property
@@ -439,6 +439,8 @@ class ValueRef(ffi.ObjectRef):
                          self._kind, self._parents).get_constant_value(
                              signed_int, round_fp) for i in range(num_elements)
             ]
+        elif self.value_kind in (ValueKind.function, ValueKind.basic_block):
+            return self
 
         # Otherwise, return the IR string
         return str(self)
