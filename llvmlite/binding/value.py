@@ -331,7 +331,8 @@ class ValueRef(ffi.ObjectRef):
         """
         if (not self.is_instruction and self.value_kind
                 not in (ValueKind.constant_array, ValueKind.constant_vector,
-                        ValueKind.constant_struct, ValueKind.global_alias)):
+                        ValueKind.constant_struct, ValueKind.global_alias,
+                        ValueKind.constant_expr)):
             raise ValueError(
                 'expected instruction value, constant aggregate, or global.'
                 ' Got %s' % (self._kind, ))
@@ -410,10 +411,9 @@ class ValueRef(ffi.ObjectRef):
             return value
         elif self.value_kind == ValueKind.constant_expr:
             # Convert constant expressions to their corresponding operands
-            inst = self.as_instruction()
             return [
                 op.get_constant_value(signed_int, round_fp)
-                for op in inst.operands
+                for op in self.operands
             ]
         elif self.value_kind == ValueKind.global_variable:
             # Obtain constant value from global initializer
