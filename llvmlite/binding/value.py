@@ -225,6 +225,13 @@ class ValueRef(ffi.ObjectRef):
             raise ValueError('no such attribute {!r}'.format(attrname))
         ffi.lib.LLVMPY_AddFunctionAttr(self, attrval)
 
+    def add_function_key_value_attribute(self, key, value):
+        if not self.is_function:
+            raise ValueError('expected function value, got %s' % (self._kind, ))
+
+        ffi.lib.LLVMPY_AddFunctionKeyValueAttr(self, _encode_string(key), len(key), _encode_string(value), len(value))
+
+
     @property
     def type(self):
         """
@@ -331,7 +338,8 @@ class ValueRef(ffi.ObjectRef):
         """
         if (not self.is_instruction and self.value_kind
                 not in (ValueKind.constant_array, ValueKind.constant_vector,
-                        ValueKind.constant_struct, ValueKind.global_alias)):
+                        ValueKind.constant_struct, ValueKind.global_alias,
+                        ValueKind.constant_expr)):
             raise ValueError(
                 'expected instruction value, constant aggregate, or global.'
                 ' Got %s' % (self._kind, ))
@@ -410,10 +418,9 @@ class ValueRef(ffi.ObjectRef):
             return value
         elif self.value_kind == ValueKind.constant_expr:
             # Convert constant expressions to their corresponding operands
-            inst = self.as_instruction()
             return [
                 op.get_constant_value(signed_int, round_fp)
-                for op in inst.operands
+                for op in self.operands
             ]
         elif self.value_kind == ValueKind.global_variable:
             # Obtain constant value from global initializer
@@ -592,6 +599,8 @@ ffi.lib.LLVMPY_GetDLLStorageClass.restype = c_int
 ffi.lib.LLVMPY_SetDLLStorageClass.argtypes = [ffi.LLVMValueRef, c_int]
 
 ffi.lib.LLVMPY_AddFunctionAttr.argtypes = [ffi.LLVMValueRef, c_uint]
+
+ffi.lib.LLVMPY_AddFunctionKeyValueAttr.argtypes = [ffi.LLVMValueRef, c_char_p, c_size_t, c_char_p, c_size_t]
 
 ffi.lib.LLVMPY_IsDeclaration.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_IsDeclaration.restype = c_int

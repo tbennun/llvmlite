@@ -151,6 +151,15 @@ LLVMPY_AddFunctionAttr(LLVMValueRef Fn, unsigned AttrKind) {
     LLVMAddAttributeAtIndex(Fn, LLVMAttributeReturnIndex, attr_ref);
 }
 
+API_EXPORT(void)
+LLVMPY_AddFunctionKeyValueAttr(LLVMValueRef Fn, const char *K, size_t KLength,
+                               const char *V, size_t VLength) {
+    LLVMContextRef ctx = LLVMGetModuleContext(LLVMGetGlobalParent(Fn));
+    LLVMAttributeRef attr_ref =
+        LLVMCreateStringAttribute(ctx, K, KLength, V, VLength);
+    LLVMAddAttributeAtIndex(Fn, LLVMAttributeReturnIndex, attr_ref);
+}
+
 API_EXPORT(unsigned)
 LLVMPY_GetEnumAttributeKind(LLVMAttributeRef A) {
     return LLVMGetEnumAttributeKind(A);
