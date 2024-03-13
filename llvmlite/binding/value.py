@@ -687,3 +687,6 @@ ffi.lib.LLVMPY_GetConstantSequenceElement.restype = ffi.LLVMValueRef
 
 ffi.lib.LLVMPY_GetConstantSequenceNumElements.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_GetConstantSequenceNumElements.restype = c_size_t
+
+ffi.lib.LLVMPY_ExtractBasicBlock.argtypes = [ffi.LLVMValueRef, ffi.LLVMValueRef]
+ffi.lib.LLVMPY_ExtractBasicBlock.restype = ffi.LLVMValueRef
