@@ -1,4 +1,6 @@
 from llvmlite.ir import CallInstr
+from llvmlite.binding import ffi
+from llvmlite.binding.value import ValueRef
 
 
 class Visitor(object):
@@ -62,3 +64,8 @@ def replace_all_calls(mod, orig, repl):
     rc = ReplaceCalls(orig, repl)
     rc.visit(mod)
     return rc.calls
+
+
+def extract_bblock(mod, func, block):
+    return ValueRef(ffi.lib.LLVMPY_ExtractBasicBlock(func, block), "function",
+                    dict(module=mod))
