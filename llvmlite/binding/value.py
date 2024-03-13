@@ -225,6 +225,13 @@ class ValueRef(ffi.ObjectRef):
             raise ValueError('no such attribute {!r}'.format(attrname))
         ffi.lib.LLVMPY_AddFunctionAttr(self, attrval)
 
+    def add_function_key_value_attribute(self, key, value):
+        if not self.is_function:
+            raise ValueError('expected function value, got %s' % (self._kind, ))
+
+        ffi.lib.LLVMPY_AddFunctionKeyValueAttr(self, _encode_string(key), len(key), _encode_string(value), len(value))
+
+
     @property
     def type(self):
         """
@@ -592,6 +599,8 @@ ffi.lib.LLVMPY_GetDLLStorageClass.restype = c_int
 ffi.lib.LLVMPY_SetDLLStorageClass.argtypes = [ffi.LLVMValueRef, c_int]
 
 ffi.lib.LLVMPY_AddFunctionAttr.argtypes = [ffi.LLVMValueRef, c_uint]
+
+ffi.lib.LLVMPY_AddFunctionKeyValueAttr.argtypes = [ffi.LLVMValueRef, c_char_p, c_size_t, c_char_p, c_size_t]
 
 ffi.lib.LLVMPY_IsDeclaration.argtypes = [ffi.LLVMValueRef]
 ffi.lib.LLVMPY_IsDeclaration.restype = c_int
