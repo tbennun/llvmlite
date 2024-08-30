@@ -95,6 +95,21 @@ class ValueRef(ffi.ObjectRef):
             ffi.lib.LLVMPY_PrintValueToString(self, outstr)
             return str(outstr)
 
+    def __repr__(self):
+        name = self.name
+        if name:
+            if self.value_kind == ValueKind.function:
+                return f'ValueRef(@{name})'
+            elif self.value_kind == ValueKind.basic_block:
+                return f'ValueRef({name}: ...)'
+            else:
+                return f'ValueRef(%{name})'
+        if self.is_constant:
+            return f'ValueRef({str(self)})'
+        if self.is_instruction:
+            return f'ValueRef({self.opcode}, ops=[{", ".join(map(repr, self.operands))}])'
+        return super().__repr__()
+
     @property
     def module(self):
         """

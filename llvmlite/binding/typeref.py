@@ -32,6 +32,12 @@ class TypeKind(enum.IntEnum):
 class TypeRef(ffi.ObjectRef):
     """A weak reference to a LLVM type
     """
+
+    def __repr__(self):
+        if self.name:
+            return f'TypeRef(%{self.name})'
+        return f'TypeRef({self})'
+
     @property
     def name(self):
         """
