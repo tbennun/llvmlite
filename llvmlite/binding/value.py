@@ -396,7 +396,7 @@ class ValueRef(ffi.ObjectRef):
         if self.value_kind == ValueKind.constant_int:
             # Python integers are also arbitrary-precision
             little_endian = c_bool(False)
-            numbytes = self.type.type_width // 8
+            numbytes = max(self.type.type_width // 8, 1)
             ptr = ffi.lib.LLVMPY_GetConstantIntRawValue(
                 self, byref(little_endian))
             asbytes = bytes(cast(ptr, POINTER(c_uint8 * numbytes)).contents)
